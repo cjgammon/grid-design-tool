@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+
+	<head>
+		<meta charset="utf-8">
+
+		<title>no styling</title>
+		<style>
+			canvas{
+				border: 1px solid black;
+			}
+			
+			#colors{
+				position: fixed;
+				bottom: 0;
+				left: 0;
+			}
+			
+			#ui{
+				position: fixed;
+				bottom: 0;
+				right: 0;
+			}
+			
+			#selectedColor{
+				width: 50px;
+				height: 50px;
+				border: 3px solid black;
+			}
+		</style>
+	</head>
+	<body>
+		<canvas id="stage"></canvas>
+		
+		<canvas id="colors"></canvas>
+		<div id="ui">
+			<div>
+				<button id="clearButton">Clear</button>
+				<button id="generateButton">Generate</button>
+			</div>
+			<input id="rangeInput" type="range" value="50"></input>
+			<textarea id="textArea"></textarea>
+			<canvas id="selectedColor"></canvas>
+		</div>
+		<script>
+			var currentColor = '#ffffff',
+				pixels = [],
+				generateBtn = document.getElementById('generateButton'),
+				rangeInput = document.getElementById('rangeInput'),
+				lightness = rangeInput.value;
+			
+			function toHex(str) {
+				var hex,
+					arr;
+				
+				if (str.search('rgb') > -1) {
+					str = str.replace('rgb(', '');
+					str = str.replace(')', '');
+					arr = str.split(',');
+					hex = ((parseInt(arr[0]) << 16) + (parseInt(arr[1]) << 8) + parseInt(arr[2])).toString(16);
+				} else {
+					hex = str;
+				}
+				
+				return hex;
+			}
+								
+			var Grid = function () {
+				var canvas = document.getElementById('stage'),
+					ctx = canvas.getContext('2d'),
+					pixelsize = 20,
+					rows = 50,
+					columns = 10;
+
+				canvas.width = rows * pixelsize;
+				canvas.height = columns * pixelsize;
+
+				addPixels();
+				draw();
+
+				function addPixels() {
+					var i,
+						_x = 0,
+						_y = 0;
+
+					for (i = 0; i < rows; i += 1) {
+						for (j = 0; j < columns; j += 1) {
+							pixels.push({x: _x, y: _y, c: "ffffff"});
+							_y += pixelsize;
+						}
+						_y = 0;
+						_x += pixelsize;
+					}
+				}
+
+				function draw() {
+					var i;
+
+					ctx.strokeStyle = "black";
+
+					for (i = 0; i < pixels.length; i += 1) {
+						ctx.beginPath();
+						ctx.fillStyle = pixels[i].c;
+						ctx.rect(pixels[i].x, pixels[i].y, pixelsize, pixelsize);
+						ctx.fill();
+						ctx.stroke();
+						ctx.closePath();
+					}
+				}
+				
+				function fillPixel(e) {
+					var x = e.pageX - canvas.offsetLeft,
+						y = e.pageY - canvas.offsetTop,
+						selectedPixel;
+					
+					for (i = 0; i < pixels.length; i += 1) {
+						selectedPixel = i;
+						if (pixels[i].x + pixelsize > x && pixels[i].y + pixelsize > y) {
+							break;
+						}
+					}
+					
+					pixels[selectedPixel].c = currentColor;
+					draw();
+				}
+
+				function handle_MOUSEDOWN(e) {
+					fillPixel(e);
+					canvas.addEventListener('mousemove', handle_MOUSEMOVE);
+				}
+
+				function handle_MOUSEUP(e) {
+					canvas.removeEventListener('mousemove', handle_MOUSEMOVE);
+				}
+
+				function handle_MOUSEMOVE(e) {
+					fillPixel(e);
+				}
+
+				canvas.addEventListener('mouseup', handle_MOUSEUP);
+				canvas.addEventListener('mousedown', handle_MOUSEDOWN);
+			}
+			
+			var ColorPicker = function () {
+				var canvas = document.getElementById('colors'),
+					ctx = canvas.getContext('2d'),
+					columns = 10,
+					rows = 37,
+					size = 20,
+					i,
+					j,
+					h = 0, 
+					s = 100, 
+					_x = 0,
+					_y = 0;
+					
+				canvas.width = rows * size;
+				canvas.height = columns * size;
+			
+				for (i = 0; i < rows; i += 1) {
+					for (j = 0; j < columns; j += 1) {
+						ctx.fillStyle = "hsl(" + h + "," + s + "%," + lightness + "%)";
+						ctx.fillRect(_x, _y, size, size);
+						
+						_y += size;
+						s -= size / 2;
+					}
+					
+					s = 100;
+					h += size;
+					
+					_y = 0;
+					_x += size;
+				}
+				
+				function handle_MOUSEDOWN(e) {
+					var x = e.pageX - canvas.offsetLeft,
+						y = e.pageY - canvas.offsetTop,
+						p;
+						
+					p = ctx.getImageData(x, y, 1, 1).data;
+					currentColor = 'rgb(' + p[0] + ',' + p[1] + ',' + p[2] + ')';
+				
+					selectedColor.style.backgroundColor = currentColor;
+				}
+				
+				canvas.addEventListener('mousedown', handle_MOUSEDOWN);
+			}
+			
+			function handle_range_CHANGE(e) {
+				lightness = rangeInput.value;
+				colorPicker = new ColorPicker();
+			}
+			
+			function handle_genBtn_CLICK(e) {
+				var i,
+					textArea = document.getElementById('textArea'),
+					string = '',
+					hex;
+				
+				for (i = 0; i < pixels.length; i += 1) {
+					hex = toHex(pixels[i].c);
+					string += '0x' + hex;
+					
+					if (i < pixels.length - 1){
+						string += ',';
+					}
+				}	
+				
+				textArea.value = string;
+			}
+			
+			grid = new Grid();
+			colorPicker = new ColorPicker();
+			generateBtn.addEventListener('click', handle_genBtn_CLICK);
+			rangeInput.addEventListener('change', handle_range_CHANGE);
+			
+		</script>
+	</body>
+</html>
